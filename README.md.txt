@@ -1,0 +1,1 @@
+This repository is for RHE 330C: Rhetorical Metrics with Dr. S. Scott Graham at UT Austin.
