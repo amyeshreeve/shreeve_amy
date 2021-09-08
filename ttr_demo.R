@@ -8,7 +8,7 @@ library(textstem)
 library(ngram)
 
 # Read text file in
-article <- readChar("cnn_article.txt", nchars=50000)
+article <- readChar("npr_article.txt", nchars=50000)
 
 # Create a verb that counts the unique number of stems in a string
 unique_stems <- function(x){
