@@ -2,31 +2,31 @@
 # Lexical Diversity Demo --------------------------------------------------
 # This is my reconstruction of TTR and LogTTR
 
-#Load libraries 
+#Loading in libraries 
 library(tidyverse)
 library(textstem)
 library(ngram)
 
-# Read text file in
+# Reading text file in
 article <- readChar("npr_article.txt", nchars=50000)
 
-# Create a verb that counts the unique number of stems in a string
+# Counting unique stems (new verb)
 unique_stems <- function(x){
   temp <- stem_strings(x)
   temp <- as.list(strsplit(temp, '\\s+')[[1]])
   temp %>% unique() %>% length()}
 
-# Apply to sentence 
+# Applying to article
 unique_stems(article)
 
-# Create a verb to get the number of words (even though ngram does this)
+# Counting number of words (verb)
 words <- function(x){
   as.list(strsplit(x, '\\s+')[[1]]) %>% length()
 }
 
-# Get article TTR
+# Getting article TTR
 unique_stems(article)/words(article)
 
 
-# Get article Herdan's C
+# Get article' Herdan's C's LogTTR
 log(unique_stems(article))/log(words(article))
