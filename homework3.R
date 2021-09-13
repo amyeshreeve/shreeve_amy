@@ -18,25 +18,27 @@ files <- list.files()
 data <- map(files,function(x) read_csv(x))
 
 # Binding data and the names of their respective files
+data2 <- map2(files,data, function(x,y) cbind(x,y))
 
-gop <- map2(files,data, function(x,y) cbind(x,y))
+# Putting data and file names in one dataframe so that each fragment is attached
+# to a corresponding file name.
 
-# Putting data and file names in one dataframe
-
-df <- do.call(rbind,gop)
+df <- do.call(rbind, data2)
 
 ## Analyzes the speaking complexity of each speaking turn using an appropriate 
-##complexity metric. 
+## complexity metric. 
 # Making two new dataframe columns: speaker and Flesch reading ease score.
+# I am removing the "speaker" name from the txt col so that the syllables in a
+# name don't accidentally contribute complexity.
 
 df2 <- df %>%
-  separate(text, "speaker", sep = ":", remove = FALSE) %>% 
-  bind_cols(textstat_readability(df$text,measure = c("Flesch")))
+  separate(text, c("speaker", "text"), sep = ":") %>% 
+  bind_cols(textstat_readability(df$text,measure = c("FOG")))
 
 ## Aggregates the data by candidate and returns a two column data frame: speaker
 ## | ave_complexity in descending order of complexity.
 
 df2 %>% 
   group_by(speaker) %>% 
-  summarise(ave_complexity = mean(Flesch)) %>%
+  summarise(ave_complexity = mean(FOG)) %>%
   arrange(desc(ave_complexity))
