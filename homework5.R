@@ -13,7 +13,7 @@ df = df %>%
   separate(date, "year", sep = "-", remove = FALSE) %>%
   filter(year < 2016)
 
-# TK -- how to properly lemmatize
+# Lemmatizing (?)
 
 df$text = lemmatize_words(df$text)
 
@@ -22,14 +22,20 @@ df_word_n <- df %>%
   anti_join(stop_words) %>%
   count(date, word, sort = TRUE)
 
+# Get total words for tf/if calc
+
 total_words <- df_word_n %>% 
   group_by(date) %>% 
   summarize(total = sum(n))
 
 df_word_data <- left_join(df_word_n, total_words)
 
+# Save word data with previous data and tf_idf
+
 df_word_data <- df_word_data %>%
   bind_tf_idf(word, date, n)
+
+# Print word data
 
 df_word_data %>%
   select(-total) %>%
