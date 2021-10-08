@@ -10,7 +10,6 @@ library(dabestr)
 
 df = read_csv("gop_debates.csv")
 nrc <- get_sentiments("nrc")
-nrc <- nrc %>% filter(sentiment=="fear")
 
 # Removing speaker names, filtering speakers, and unnesting tokens
 data = df %>%
@@ -18,73 +17,72 @@ data = df %>%
   filter(who == "BUSH" | who == "CRUZ"|who == "FIORINA"|who == "TRUMP") %>%
   unnest_tokens(word, text, token = "words")
 
+# Making the index into a column
 data <- cbind(turn = rownames(data), data)
 
-# Here, I  tested all three methods & preferred the lemmatization results
+# Lemmatizing
 
-# df_stemmed <- df %>% mutate(word=stem_words(word))
-# nrc_stemmed <- nrc %>% mutate(word=stem_words(word))
-# data1 = df_stemmed %>% left_join(nrc_stemmed)
+## df_stemmed <- df %>% mutate(word=stem_words(word))
+## nrc_stemmed <- nrc %>% mutate(word=stem_words(word))
+## data1 = df_stemmed %>% left_join(nrc_stemmed)
 
 data_lemma <- data %>% mutate(word=lemmatize_words(word))
 nrc_lemma  <- nrc %>% mutate(word=lemmatize_words(word))
-data2 = data_lemma  %>% left_join(nrc_lemma)
 
 # data3 = df %>% regex_left_join(nrc) %>% group_by(word.x)
 
-nrc_analysis <- data2 %>%
-  inner_join(nrc)
+# Getting the n of each word, getting total words
 
-# Filtering for fear data, getting counts, calculating TF-IDF
-
-fear_data = nrc_analysis
-
-fear_data_n <- fear_data %>%
+data_n <- data_lemma %>%
   count(turn, word, sort = TRUE)
 
-fear_data_n <- fear_data_n %>% left_join(fear_data)
+data_n <- data_n %>% left_join(data_lemma)
 
-total_words <- fear_data_n %>% 
+total_words <- data_n %>% 
   group_by(turn) %>% 
   summarize(total = sum(n))
 
-fear_data_n <- left_join(fear_data_n, total_words)
+data_n <- left_join(data_n, total_words)
 
-fear_data_n <- fear_data_n %>%
+# Doing the tf-idf
+
+data_n <- data_n %>%
   bind_tf_idf(word, turn, n)
 
-fear_data_n <- fear_data_n %>% 
+data2 <- data_n %>%
+  inner_join(nrc)
+
+# Adding term frequency by term
+
+data2 <- data2 %>%
+  filter(sentiment=="fear")
+
+fear_data_n <- data2 %>% 
+  filter(sentiment=="fear") %>%
   group_by(turn) %>% 
-  summarize(freq = sum(tf))
+  summarise(fear_use = sum(tf))
 
-# sum term frequency by speaking turn
+fear_data_n <- inner_join(data2, total_words)
 
-data %>%
-  unnest_tokens(word, text) %>%
-  count(word, sort = TRUE) %>%
-  mutate(word = reorder(word, n))
+# Average fear frequency grouped by candidate
 
-# average frequency across speaking turns by candidate
+candidate_n <- data %>%
+  count(who, turn, sort = TRUE) %>%
+  group_by(who) %>%
+  summarise(turns = sum(n))
 
-# display/show meaningful difference
+candidate_analysis <- fear_data_n %>%
+  group_by(who) %>%
+  summarise(value = sum(tf))
 
-# Creating visualization
+candidate_analysis = candidate_analysis %>% left_join(candidate_n)
 
-fear_data_n %>%
-  arrange(desc(tf_idf)) %>%
-  mutate(word = factor(word, levels = rev(unique(word)))) %>% 
-  group_by(who) %>% 
-  slice(1:15) %>% 
-  ungroup() %>%
-  ggplot(aes(word, tf, fill = who)) +
-  geom_col(show.legend = FALSE) +
-  labs(x = NULL, y = "tf-idf") +
-  facet_wrap(~who, ncol = 2, scales = "free") +
-  coord_flip()
+# candidate_analysis <- cbind(times = (div(value) by = turns), data)
 
 
-#---------------------------------------------------------------------NOTES
+#---------------------------------------------------------------------QUES
 
+#What constitutes a turn?
 #Maybe I shouldn't group by fear too early because then the tf will be out of 1
 #Then I need to average across all turns by candidate
 #I need to find a visualization that shows the differences based on Trump
