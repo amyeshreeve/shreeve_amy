@@ -26,64 +26,42 @@ data <- cbind(turn = rownames(data), data) %>%
 ## nrc_stemmed <- nrc %>% mutate(word=stem_words(word))
 ## data1 = df_stemmed %>% left_join(nrc_stemmed)
 
-# Lemmatizes nrc & data, combines them together
-data_lemma <- data %>% mutate(word=lemmatize_words(word))
-nrc_lemma  <- nrc %>% mutate(word=lemmatize_words(word))
-data_lemma  <- data_lemma %>% left_join(nrc_lemma)
-
 # data3 = df %>% regex_left_join(nrc) %>% group_by(word.x)
 
-# Getting the n of each word, getting total words
+# Lemmatizes nrc & data, gets TF, combines nrc and data
 
-data_n <- data_lemma %>%
-  count(turn, word, sort = TRUE)
+data_lemma <- data %>% 
+  mutate(word=lemmatize_words(word), .keep = "all" )  
 
-data_lemma <- data_lemma %>%
-  filter(!is.na(sentiment))
+data_count <- data_lemma %>% count(turn, word, sort = TRUE)
 
-data_n <- data_n %>% inner_join(data_lemma)
+data_lemma <- data_lemma %>% left_join(data_count)
 
-total_words <- data_n %>% 
-  group_by(turn) %>%
-  summarize(total = sum(n))
+nrc_lemma  <- nrc %>% mutate(word=lemmatize_words(word))
 
-data_n <- left_join(data_n, total_words)
+data2 <- data_lemma %>%
+  inner_join(nrc_lemma)
 
-# Doing the tf-idf
-
-data_n <- data_n %>%
-  bind_tf_idf(word, turn, n)
-
-data2 <- data_n %>%
-  inner_join(nrc)
-
-# Adding term frequency by term
+# Filtering term frequency by fear
 
 data2 <- data2 %>%
-  filter(sentiment=="fear")
+  filter(sentiment=="fear", .preserve = TRUE)
 
 fear_data_n <- data2 %>% 
-  filter(sentiment=="fear") %>%
   group_by(turn) %>% 
-  summarise(fear_use = sum(tf))
+  mutate(fear_use = sum(n), .keep = "all") %>%
+  ungroup()
 
-fear_data_n <- inner_join(data2, total_words)
+# Bootstrapping larger sample of term frequency per turn
 
-# Average fear frequency per turn grouped by candidate
+fear_dabest <- fear_data_n %>% select(who, fear_use) %>% 
+  dabest(x = who,
+         y= fear_use,
+         idx= c("TRUMP", "BUSH", "CRUZ", "FIORINA"),
+         paired = FALSE)
 
-candidate_analysis <- fear_data_n %>%
-  group_by(who) %>%
-  summarise(value = mean(tf))
+# Visualizing average mean difference between the percent
 
-candidate_analysis = candidate_analysis %>% left_join(candidate_n)
+fear_dabest %>% mean_diff() %>% plot()
 
-# candidate_analysis <- cbind(times = (div(value) by = turns), data)
-
-
-#---------------------------------------------------------------------QUES
-
-#What constitutes a turn?
-#Maybe I shouldn't group by fear too early because then the tf will be out of 1
-#Then I need to average across all turns by candidate
-#I need to find a visualization that shows the differences based on Trump
-#It doesn't matter *what* the fear words are; it just matters their frequency.
+fear_dabest %>% mean_diff
