@@ -49,8 +49,7 @@ data2 <- data2 %>%
 
 fear_data_n <- data2 %>% 
   group_by(turn) %>% 
-  mutate(fear_use = sum(n), .keep = "all") %>%
-  ungroup()
+  summarise(fear_use = sum(n), who = unique(who))
 
 # Bootstrapping larger sample of term frequency per turn
 
