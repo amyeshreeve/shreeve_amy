@@ -10,7 +10,7 @@ library(tidytext)
 library(dabestr)
 
 
-bing <- get_sentiments("bing")
+afin <- get_sentiments("afinn")
 df <- dataset_ag_news()
 
 # Making a column to distinguish articles
@@ -29,32 +29,24 @@ df_lemma <- df %>%
   mutate(word=lemmatize_words(word)) %>%
   left_join(df) %>%
   select(-title, -description)
-bing_lemma  <- bing %>% mutate(word=lemmatize_words(word))
+afin_lemma  <- afin %>% mutate(word=lemmatize_words(word))
 
-# bing analysis with lemmatized data
-bing_analysis <- df_lemma %>%
-  inner_join(bing_lemma)%>%
-  count(article, sentiment) %>%
-  pivot_wider(names_from = "sentiment", values_from=n) %>% 
-  mutate(positive = replace_na(positive,0), negative = replace_na(negative,0)) %>% 
-  mutate(sent_score = positive + negative*-1) %>%
-  left_join(df_lemma)
-
-# Getting the aggregate score per article
-bing_analysis_n <- bing_analysis %>% 
+# Afinn analysis with lemmatized data + getting aggregate score
+afin_analysis <- df_lemma %>%
+  inner_join(afin_lemma) %>%
   group_by(article) %>% 
-  summarise(sentiment = sum(sent_score), class = unique(class))
-  
+  summarise(sentiment = sum(value), class = unique(class))
+
 # Piping into dabest by class
-bing_dabest <- bing_analysis_n %>% select(class, sentiment) %>%
+afin_dabest <- afin_analysis %>% select(class, sentiment) %>%
   dabest(x= class,
          y= sentiment,
-         idx= c("Business", "Sci/Tech", "Sports", "World"),
+         idx= c("Sci/Tech", "Sports", "World", "Business"),
          paired = FALSE)
 
 
 # Getting mean difference figures
-bing_dabest %>% mean_diff() 
+afin_dabest %>% mean_diff() 
 
 # Visualizing mean difference
-bing_dabest %>% mean_diff() %>% plot
+afin_dabest %>% mean_diff() %>% plot
