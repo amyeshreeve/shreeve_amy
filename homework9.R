@@ -1,4 +1,4 @@
-# Load libraries
+# Load libraries and data
 
 library(tidyverse)
 library(stringr)
@@ -53,11 +53,11 @@ training_set_no_id <- df_engineered %>%
 
 # KNN Modelling
 
-knnfit <- train(ut ~ ., 
+knnfit <- train(spam ~ ., 
                 data = training_set_no_id,
                 method = "knn",
                 tuneLength = 7)
-knn_pred <- test_set %>% select(-ut) %>% predict(knnfit, newdata = ., type = 'prob')
+knn_pred <- test_set %>% select(-spam) %>% predict(knnfit, newdata = ., type = 'prob')
 
 # NB Modelling
 
@@ -66,17 +66,17 @@ fitControl <- trainControl(method = "repeatedcv",
                            repeats = 5, 
                            classProbs = TRUE, 
                            summaryFunction = twoClassSummary)
-nb_mod = train(ut ~ ., 
+nb_mod = train(spam ~ ., 
                data = training_set_no_id, 
                method="naive_bayes", 
                trControl = fitControl, 
                tuneGrid = expand.grid(usekernel=TRUE,laplace=0,adjust=1))
 
-nb_pred <- test_set %>% select(-ut) %>% predict(nb_mod, newdata = ., type = 'prob')
+nb_pred <- test_set %>% select(-spam) %>% predict(nb_mod, newdata = ., type = 'prob')
 
 # NN Modelling
 
-nnetFit <- train(ut ~ ., 
+nnetFit <- train(spam ~ ., 
                  data = training_set_no_id,
                  method = "nnet",
                  metric = "ROC",
@@ -84,12 +84,14 @@ nnetFit <- train(ut ~ .,
                  tuneLength = 3,
                  verbose = FALSE)
 
-nn_pred <- test_set %>% select(-ut) %>% predict(nnetFit, newdata = ., type = 'prob')
+nn_pred <- test_set %>% select(-spam) %>% predict(nnetFit, newdata = ., type = 'prob')
 
 # ROCs
-knn_roc <- roc(test_set$ut,knn_pred$yes)
-nb_roc <- roc(test_set$ut,nb_pred$yes)
-nn_roc <- roc(test_set$ut,nn_pred$yes)
 
-# Compare
+knn_roc <- roc(test_set$spam,knn_pred$yes)
+nb_roc <- roc(test_set$spam,nb_pred$yes)
+nn_roc <- roc(test_set$spam,nn_pred$yes)
+
+# Compare visually
+
 ggroc(list(knn=knn_roc,nb=nb_roc,nnet=nn_roc), legacy.axes = TRUE)
