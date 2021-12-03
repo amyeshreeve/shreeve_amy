@@ -8,12 +8,14 @@ library(quanteda.textstats)
 library(textstem)
 library(dplyr)
 
+# These are the webscraping libraries
+
 library(RedditExtractoR)
 library(openxlsx)
 
 # Skill 1 -- Social Media Scraping
-# This works, but it takes a long time to run
-# I saved it to an excel and then import it later
+# This works, but it takes a long time to run.
+# I saved it to an excel and then import it later on in the program.
 
 excontent <- get_reddit(
   subreddit = "exmormon",
@@ -33,7 +35,7 @@ ldscontent <- get_reddit(
 write.xlsx(excontent, 'ExMormonData.xlsx')
 write.xlsx(ldscontent, 'LDSData.xlsx')
 
-# Importing datasets
+# Importing datasets, removing NAs
 
 ex = read_excel("ExMormonData.xlsx") %>% na.omit()
 lds = read_excel("LDSData.xlsx")  %>% na.omit()
@@ -44,6 +46,7 @@ lds = read_excel("LDSData.xlsx")  %>% na.omit()
 
 lemmatize_strings("gay lesbian bisexual transgender queer lgbt")
 lgbt <- "gay|lesbian|bisexual|transgender|queer|lgbt"
+church <- ""
 
 # Bound stopwords
 stop_words_bounded <- paste0("\\b", stop_words$word, "\\b", collapse = "|")
@@ -54,11 +57,15 @@ ex %>%
   filter(str_detect(trigram,lgbt)) %>% 
   filter(str_count(trigram,stop_words_bounded) < 1) %>% 
   mutate(trigram = reorder(trigram, n)) %>%
-  slice(1:15) %>%
-  ggplot(aes(x=trigram, y=n)) +
+  slice(1:15)%>%
+  ggplot(aes(x=trigram, y=n, fill=trigram)) +
+  geom_bar(stat="identity") +
+  guides(fill=FALSE) +
   geom_col() +
   xlab(NULL) +
   coord_flip()
+
+# Doing it again for the LDS dataset
 
 lds %>%
   unnest_tokens(trigram, comment, token = "ngrams", n=3) %>% 
@@ -67,17 +74,18 @@ lds %>%
   filter(str_count(trigram,stop_words_bounded) < 1) %>% 
   mutate(trigram = reorder(trigram, n)) %>%
   slice(1:15) %>%
-  ggplot(aes(x=trigram, y=n)) +
+  ggplot(aes(x=trigram, y=n, fill=trigram)) +
+  geom_bar(stat="identity") +
+  guides(fill=FALSE) +
   geom_col() +
   xlab(NULL) +
   coord_flip()
 
 # Skill 4 -- ML Classification
 
-# More libraries
+# More libraries for ML stuff
 
 library(stringr)
-library(tidytext)
 library(caret)
 library(pROC)
 
@@ -88,17 +96,20 @@ lds2 <- lds2[1:50, ]
 ex2 <- ex %>% select(c("post_text", "subreddit")) %>% unique()
 ex2 <- ex2[1:50, ]
 
+# Combining the two sets, row names
+
 df <- rbind(lds2, ex2) %>% 
   select(c("post_text", "subreddit")) %>% 
   mutate(number=row.names(.))
 
-# Making labels to save for later
+# Making labels to save for later, making "type" a yes-no
 
 df_labels <- df %>% mutate(type = ifelse(subreddit=="latterdaysaints","yes","no")) %>%
   select(number, type)
 
 # Feature Engineering
 # TF-IDF is appropriate because we don't already know the content categories.
+# Framegrams could be helpful, but not as accurate
 
 df_counts <- map_df(1:2, 
                     ~ unnest_tokens(df, word, post_text, 
@@ -106,7 +117,7 @@ df_counts <- map_df(1:2,
   anti_join(stop_words, by = "word") %>%
   count(number, word, sort = TRUE)
 
-# finding only words used more than 10x
+# finding only words used more than 10x (for server capacity sake)
 
 words_10 <- df_counts %>%
   group_by(word) %>%
@@ -115,7 +126,7 @@ words_10 <- df_counts %>%
   select(word) %>%
   na.omit()
 
-# making the document term matrix
+# Making the document term matrix
 
 df_dtm <- df_counts %>%
   right_join(words_10, by = "word") %>%
@@ -147,6 +158,7 @@ knnfit <- train(type ~ .,
                 data = training_set_no_id,
                 method = "knn",
                 tuneLength = 7)
+
 knn_pred <- test_set %>% select(-type) %>% predict(knnfit, newdata = ., type = 'prob')
 
 # NB Modelling
@@ -165,6 +177,7 @@ nb_mod = train(type ~ .,
 nb_pred <- test_set %>% select(-type) %>% predict(nb_mod, newdata = ., type = 'prob')
 
 # NN Modelling
+# Weird maxweights comes from a random error I got unless I had it
 
 nnetFit <- train(type ~ ., 
                  data = training_set_no_id,
@@ -184,6 +197,7 @@ nb_roc <- roc(test_set$type,nb_pred$yes)
 nn_roc <- roc(test_set$type,nn_pred$yes)
 
 # Compare numerically
+
 knn_roc
 nb_roc
 nn_roc
