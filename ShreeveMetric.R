@@ -1,3 +1,5 @@
+# Do Exmormons and Latter-day Saints discuss LGBT issues differently?
+
 # Importing libraries
 
 library(readxl)
@@ -16,6 +18,7 @@ library(openxlsx)
 # Skill 1 -- Social Media Scraping
 # This works, but it takes a long time to run.
 # I saved it to an excel and then import it later on in the program.
+# Extracting all posts & comments from LGBT-related posts with 50+ comments
 
 excontent <- get_reddit(
   subreddit = "exmormon",
@@ -46,7 +49,6 @@ lds = read_excel("LDSData.xlsx")  %>% na.omit()
 
 lemmatize_strings("gay lesbian bisexual transgender queer lgbt")
 lgbt <- "gay|lesbian|bisexual|transgender|queer|lgbt"
-church <- ""
 
 # Bound stopwords
 stop_words_bounded <- paste0("\\b", stop_words$word, "\\b", collapse = "|")
@@ -82,7 +84,6 @@ lds %>%
   coord_flip()
 
 # Skill 4 -- ML Classification
-
 # More libraries for ML stuff
 
 library(stringr)
